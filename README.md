@@ -1,0 +1,1 @@
+# azure-sdk-for-net-issue-6462
