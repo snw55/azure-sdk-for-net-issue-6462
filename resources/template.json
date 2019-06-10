@@ -1,0 +1,96 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "baseName": {
+            "type": "string"
+        }
+    },
+    "variables": {
+        "serviceBusNamespaceName": "[concat(parameters('baseName'), '-sbn')]",
+        "appServiceName": "[concat(parameters('baseName'), '-app')]",
+        "appServicePlanName": "[concat(parameters('baseName'), '-asp')]",
+        "appServicePlanSku": {
+            "Name": "S1",
+            "tier": "Standard",
+            "size": "S1",
+            "family": "S",
+            "capacity": 1
+        },
+        "identityResourceId": "[concat(resourceId('Microsoft.Web/sites', variables('appServiceName')),'/providers/Microsoft.ManagedIdentity/Identities/default')]"
+    },
+    "resources": [
+        {
+            "apiVersion": "2017-04-01",
+            "name": "[variables('serviceBusNamespaceName')]",
+            "type": "Microsoft.ServiceBus/namespaces",
+            "location": "[resourceGroup().location]",
+            "sku": {
+                "name": "Standard"
+            },
+            "properties": {}
+        },
+        {
+            "type": "Microsoft.ServiceBus/namespaces/topics",
+            "apiVersion": "2017-04-01",
+            "name": "[concat(variables('serviceBusNamespaceName'), '/test')]",
+            "location": "[resourceGroup().location]",
+            "dependsOn": [
+                "[resourceId('Microsoft.ServiceBus/namespaces', variables('serviceBusNamespaceName'))]"
+            ],
+            "properties": {}
+        },
+        {
+            "type": "Microsoft.Web/serverfarms",
+            "kind": "app",
+            "name": "[variables('appServicePlanName')]",
+            "apiVersion": "2016-09-01",
+            "location": "[resourceGroup().location]",
+            "properties": {
+                "name": "[variables('appServicePlanName')]",
+                "perSiteScaling": false,
+                "reserved": false,
+                "targetWorkerCount": 0,
+                "targetWorkerSizeId": 0
+            },
+            "sku": "[variables('appServicePlanSku')]",
+            "dependsOn": []
+        },
+        {
+            "apiVersion": "2016-08-01",
+            "type": "Microsoft.Web/sites",
+            "kind": "api",
+            "name": "[variables('appServiceName')]",
+            "location": "[resourceGroup().location]",
+            "identity": {
+                "type": "SystemAssigned"
+            },
+            "properties": {
+                "serverFarmId": "[variables('appServicePlanName')]"
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]"
+            ]
+        },
+        {
+            "type": "Microsoft.Web/sites/config",
+            "apiVersion": "2016-08-01",
+            "name": "[concat(variables('appServiceName'), '/web')]",
+            "location": "[resourceGroup().location]",
+            "dependsOn": [
+                "[variables('appServiceName')]"
+            ],
+            "properties": {
+                "use32BitWorkerProcess": false,
+                "httpLoggingEnabled": true,
+                "detailedErrorLoggingEnabled": true,
+                "requestTracingEnabled": true,
+                "localMySqlEnabled": false,
+                "siteAuthEnabled": false,
+                "phpVersion": "Off",
+                "scmType": "None"
+            }
+        }
+    ],
+    "outputs": {}
+}
